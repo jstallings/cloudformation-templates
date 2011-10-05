@@ -1,0 +1,78 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Create an EC2 instance running Canonical Ubuntu with a new EBS volume attached. ",
+
+  "Parameters" : {
+    "KeyName" : {
+      "Description" : "Name of an existing EC2 Keypair to enable SSH access into the server",
+      "Type" : "String"
+    },
+    "InstanceType" : {
+      "Description" : "The type of EC2 instance to launch",
+      "Type" : "String",
+      "Default" : "t1.micro"
+    },
+    "VolumeSize" : {
+      "Description" : "The size of the EBS volume to attach",
+      "Type" : "Number",
+      "Default" : "10"
+    },
+    "SecurityGroup" : {
+      "Description" : "The security group to add the EC2 instance to",
+      "Type" : "String",
+      "Default" : "default"
+    }
+  },
+  "Mappings" : {
+    "AWSInstanceType2Arch" : {
+      "t1.micro" : {"Arch" : "64" },
+      "m1.small" : {"Arch" : "32" }
+    },
+    "AWSRegionArch2AMI" : {
+      "us-east-1" : {"32" : "ami-ab36fbc2", "64":"ami-ad36fbc4"},
+      "us-west-1" : {"32" : "ami-eb227eae", "64" : "ami-f5227eb0"}
+    }
+  },
+  "Resources" : {
+    "Ec2Instance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "SecurityGroups" : [ { "Ref" : "InstanceSecurityGroup" } ],
+        "ImageId" :   { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" }, 
+                      { "Fn::FindInMap" : [ "AWSInstanceType2Arch", {"Ref" : "InstanceType"}, "Arch"] } ] },
+        "InstanceType" : {"Ref" : "InstanceType" },
+        "SecurityGroups" : [{ "Ref": "SecurityGroup" }]
+        }
+      },
+    "Volume1" : {
+      "Type" : "AWS::EC2::Volume",
+      "Properties" : {
+        "Size" : "10",
+        "AvailabilityZone" : { "Fn::GetAtt" : [ "Ec2Instance", "AvailabilityZone" ]}
+      }
+    },
+    "MountPoint" : {
+      "Type" : "AWS::EC2::VolumeAttachment",
+      "Properties" : {
+        "InstanceId" : {"Ref" : "Ec2Instance"},
+        "VolumeId" : {"Ref" : "Volume1"},
+        "Device" : "/dev/sdh"
+      }
+    }
+  },
+  "Outputs" : {
+    "InstanceId" : {
+      "Description" : "InstanceId of the newly created EC2 instance",
+      "Value" : { "Ref" : "Ec2Instance" }
+    },
+    "VolumeId" : {
+      "Description" : "VolumeId of the newly created EBS Volume",
+      "Value" : { "Ref" : "Volume1" }
+    },
+    "AvailabilityZone" : {
+      "Description" : "The Availability Zone in which the newly created EC2 instance was launched",
+      "Value" : { "Fn::GetAtt" : [ "Ec2Instance", "AvailabilityZone" ] }
+    }
+  }
+}
