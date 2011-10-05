@@ -42,7 +42,16 @@
         "ImageId" :   { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" }, 
                       { "Fn::FindInMap" : [ "AWSInstanceType2Arch", {"Ref" : "InstanceType"}, "Arch"] } ] },
         "InstanceType" : {"Ref" : "InstanceType" },
-        "SecurityGroups" : [{ "Ref": "SecurityGroup" }]
+        "SecurityGroups" : [{ "Ref": "SecurityGroup" }],
+        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+          "#cloud-config\n",
+          "apt_update : true\n",
+          "apt_upgrade: true\n",
+          "packages:\n", 
+          "- vim\n",
+          "mounts:\n",
+          "- [ sdh, /data, \"xfs\", \"noatime,noexec,nodiratime\", 0, 0]\n"
+        ]]}}
         }
       },
     "Volume1" : {
