@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Error exit function
+function error_exit
+{
+    echo $1
+      exit 1
+}
+
+# Grab the keys
+cd /home/ubuntu
+mkdir .chef
+sudo cp /etc/chef/*.pem .chef
+sudo chown -R ubuntu:ubuntu .chef
+
+# Configure knife
+cd /home/ubuntu
+knife configure -i > /tmp/knife_configuration.log 2>&1 <<EOF
+/home/ubuntu/.chef/knife.rb
+http://localhost:4000
+serveruser
+chef-webui
+/home/ubuntu/.chef/webui.pem
+chef-validator
+/home/ubuntu/.chef/validation.pem
+
+EOF
+
+# Set ownership of the repo
+sudo chown -R ubuntu:ubuntu /home/ubuntu/chef-repo

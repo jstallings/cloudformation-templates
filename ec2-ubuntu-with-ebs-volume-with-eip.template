@@ -1,0 +1,104 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Create an EC2 instance running Canonical Ubuntu with a new EBS volume attached. Specify an Elastic IP to attach ",
+
+  "Parameters" : {
+    "KeyName" : {
+      "Description" : "Name of an existing EC2 Keypair to enable SSH access into the server",
+      "Type" : "String"
+    },
+    "InstanceType" : {
+      "Description" : "The type of EC2 instance to launch",
+      "Type" : "String",
+      "Default" : "t1.micro"
+    },
+    "VolumeSize" : {
+      "Description" : "The size of the EBS volume to attach",
+      "Type" : "Number",
+      "Default" : "10"
+    },
+    "SecurityGroup" : {
+      "Description" : "The security group to add the EC2 instance to",
+      "Type" : "String",
+      "Default" : "default"
+    },
+    "ElasticIP" : {
+      "Description" : "The Elastic IP to use to associate with the instance",
+      "Type" : "String"
+    }
+  },
+  "Mappings" : {
+    "AWSInstanceType2Arch" : {
+      "t1.micro" : {"Arch" : "64" },
+      "m1.small" : {"Arch" : "32" }
+    },
+    "AWSRegionArch2AMI" : {
+      "us-east-1" : {"32" : "ami-ab36fbc2", "64":"ami-ad36fbc4"},
+      "us-west-1" : {"32" : "ami-eb227eae", "64" : "ami-f5227eb0"}
+    }
+  },
+  "Resources" : {
+    "Ec2Instance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "SecurityGroups" : [ { "Ref" : "InstanceSecurityGroup" } ],
+        "ImageId" :   { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" }, 
+                      { "Fn::FindInMap" : [ "AWSInstanceType2Arch", {"Ref" : "InstanceType"}, "Arch"] } ] },
+        "InstanceType" : {"Ref" : "InstanceType" },
+        "SecurityGroups" : [{ "Ref": "SecurityGroup" }],
+        "KeyName" : {"Ref" : "KeyName" },
+        "Tags" : [
+          { 
+            "Key" : "Name",
+            "Value" : {"Ref" : "AWS::StackName"} 
+          }
+        ],
+        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+          "#cloud-config\n",
+          "apt_update: true\n",
+          "apt_upgrade: true\n",
+          "packages:\n", 
+          " - vim\n",
+          " - xfsprogs\n",
+          "mounts:\n",
+          " - [ \"sdh\", \"/data\", \"xfs\", \"noatime,noexec,nodiratime\", \"0\", \"0\"]\n"
+        ]]}}
+        }
+      },
+    "Volume1" : {
+      "Type" : "AWS::EC2::Volume",
+      "Properties" : {
+        "Size" : "10",
+        "AvailabilityZone" : { "Fn::GetAtt" : [ "Ec2Instance", "AvailabilityZone" ]},
+        "Tags" : [
+          { 
+            "Key" : "Name",
+            "Value" : {"Ref" : "AWS::StackName"} 
+          }
+        ]
+      }
+    },
+    "MountPoint" : {
+      "Type" : "AWS::EC2::VolumeAttachment",
+      "Properties" : {
+        "InstanceId" : {"Ref" : "Ec2Instance"},
+        "VolumeId" : {"Ref" : "Volume1"},
+        "Device" : "/dev/sdh"
+      }
+    },
+    "IPAssoc" : {
+      "Type" : "AWS::EC2::EIPAssociation",
+      "Properties" : {
+        "InstanceId" : {"Ref" : "Ec2Instance"},
+        "EIP" : {"Ref" : "ElasticIP"}
+      }
+    }
+  },
+  "Outputs" : {
+    "ServerDNS" : {
+      "Description" : "DNS name of launched server",
+      "Value" : { "Fn::GetAtt" : [ "Ec2Instance", "PublicDnsName" ] }
+    }
+  }
+}
