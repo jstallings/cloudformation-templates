@@ -4,7 +4,7 @@ apt-get update
 apt-get install -y ruby ruby-1.8-dev build-essential wget libruby-extras libruby1.8-extras
 cd /tmp
 wget http://production.cf.rubygems.org/rubygems/rubygems-1.6.2.tgz
-tar zxf rubygems-1.6.2
+tar zxf rubygems-1.6.2.tgz
 cd rubygems-1.6.2
 ruby setup.rb --no-format-executable
 
